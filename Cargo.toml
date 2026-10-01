@@ -1,6 +1,5 @@
-[workspace]
-members = ["xtask"]
-exclude = ["scripts/"]
+# Fork notes (branch `lexbay`): no [workspace] (used as a plain git dependency), `ort` without default features
+# (the default `api-27` requires ONNX Runtime >= 1.27; the consumer pins the ORT library it loads), one BLAS backend per target.
 
 [package]
 name = "speakrs"
@@ -18,8 +17,7 @@ categories = ["multimedia::audio", "science"]
 include = ["/src/**", "/examples/**", "/README.md", "/LICENSE", "/Cargo.toml"]
 
 [features]
-default = ["online", "default-linalg"]
-default-linalg = ["dep:ndarray-linalg-default"]
+default = ["online"]
 online = ["dep:hf-hub", "hf-hub/ureq", "hf-hub/native-tls"]
 coreml = [
     "dep:block2",
@@ -31,9 +29,6 @@ cuda = ["ort/cuda"]
 migraphx = ["ort/migraphx"]
 load-dynamic = ["ort/load-dynamic", "dep:libloading"]
 
-intel-mkl = ["dep:ndarray-linalg-mkl"]
-openblas-static = ["dep:ndarray-linalg-static"]
-openblas-system = ["dep:ndarray-linalg-system"]
 
 _metrics = []
 
@@ -46,12 +41,9 @@ hf-hub = { version = "0.5", optional = true, default-features = false }
 # math
 kodama = "0.3.0"
 ndarray = { version = "0.17.2", features = ["matrixmultiply-threading"] }
-ndarray-linalg-mkl = { package = "ndarray-linalg", version = "0.18.1", features = ["intel-mkl-static"], optional = true }
-ndarray-linalg-static = { package = "ndarray-linalg", version = "0.18.1", features = ["openblas-static"], optional = true }
-ndarray-linalg-system = { package = "ndarray-linalg", version = "0.18.1", features = ["openblas-system"], optional = true }
 ndarray-npy = "0.10.0"
 
-ort = { version = "2.0.0-rc.12", features = ["ndarray"] }
+ort = { version = "2.0.0-rc.12", default-features = false, features = ["std", "ndarray"] }
 libloading = { version = "0.9.0", optional = true }
 
 # logging
@@ -63,12 +55,6 @@ thiserror = "2.0.18"
 # concurrency
 crossbeam-channel = "0.5"
 rayon = "1.11.0"
-
-[target.'cfg(target_arch = "x86_64")'.dependencies]
-ndarray-linalg-default = { package = "ndarray-linalg", version = "0.18.1", features = ["intel-mkl-static"], optional = true }
-
-[target.'cfg(not(target_arch = "x86_64"))'.dependencies]
-ndarray-linalg-default = { package = "ndarray-linalg", version = "0.18.1", features = ["openblas-static"], optional = true }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 objc2 = { version = "0.6", optional = true }
@@ -102,3 +88,10 @@ objc2-foundation = { version = "0.3", optional = true, features = [
 approx = "0.5.1"
 serde_json = "1"
 tracing-subscriber = { version = "0.3.22", features = ["env-filter"] }
+
+# One BLAS backend per target (Intel MKL on Windows, system OpenBLAS elsewhere), single dependency name.
+[target.'cfg(windows)'.dependencies]
+ndarray-linalg = { version = "0.18.1", features = ["intel-mkl-static"] }
+
+[target.'cfg(not(windows))'.dependencies]
+ndarray-linalg = { version = "0.18.1", features = ["openblas-system"] }
